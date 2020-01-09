@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 
-import sys, re, statistics, subprocess, concurrent.futures
+import sys, re, argparse, statistics, subprocess, concurrent.futures
 import scipy.stats as stats
 
 from utils import check_pileup_record
@@ -118,7 +118,7 @@ def main(var_file, output_file, control_bam, reference_genome):
 
 if __name__ == "__main__":
 
-    import sys
+    """
     var_file = "out.txt"
     output_file = "out2.txt"
     control_bam = ["s3://eva-bucket-tokyo/kataoka-lab/long_read_sequencing/cell-line/minimap2/HCC1954.bam",
@@ -126,7 +126,15 @@ if __name__ == "__main__":
                    "s3://eva-bucket-tokyo/kataoka-lab/long_read_sequencing/cell-line/minimap2/H2009.bam",
                    "s3://eva-bucket-tokyo/kataoka-lab/long_read_sequencing/cell-line/minimap2/BL2009.bam"]
     reference_genome = "/home/ubuntu/environment/workspace/seq_data/reference/GRCh37.fa"
+    """
 
-    main(var_file, output_file, control_bam, reference_genome)
+    parser = argparse.ArgumentParser(description = "Adding non-matched control infomation to the variant candidate file")
+    parser.add_argument("variant_file", type = str, help = "Path to variant candidate file")
+    parser.add_argument("output_file", type = str, help = "Path to the output file")
+    parser.add_argument("reference", type = str, help = "Path to the reference genome")
+    parser.add_argument("control_bams", type = str, nargs='+', help = "Path to non-matched control files")
+    args = parser.parse_args()
+
+    main(args.variant_file, args.output_file, args.control_bams, args.reference_genome)
 
 

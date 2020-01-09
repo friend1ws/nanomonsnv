@@ -1,14 +1,11 @@
 #! /usr/bin/env python
 
-import subprocess, re, sys, math, statistics, concurrent.futures 
+import subprocess, re, sys, math, statistics, argparse, concurrent.futures 
 import scipy.stats as stats
+import time
+
 
 from utils import check_pileup_record
-
-
-# samtools mpileup s3://eva-bucket-tokyo/kataoka-lab/long_read_sequencing/cell-line/minimap2/COLO829.bam s3://eva-bucket-tokyo/kataoka-lab/long_read_sequencing/cell-line/minimap2/COLO829BL.bam -r 22:1-1000000000 -f ~/environment/workspace/seq_data/reference/GRCh37.fa -Q 0 -q 40 -B > COLO829_22_nano.pileup
-
-# python mpileup_nano.py COLO829_22_nano.pileup COLO829_22_var_cand.txt 
 
 
 def proc_pileup_line(pileup_line, output_file_handle, min_variant_num_tumor = 5, min_depth_tumor = 8, min_variant_ratio_tumor = 0.1,
@@ -23,16 +20,8 @@ def proc_pileup_line(pileup_line, output_file_handle, min_variant_num_tumor = 5,
     if total_variant_num_tumor < min_variant_num_tumor: return 
     if total_variant_num_tumor / int(F[3]) < min_variant_ratio_tumor: return
 
-    if int(F[6]) < 8: return 
+    if int(F[6]) < min_depth_ctrl: return 
 
-    # total_variant_num_ctrl = int(F[6]) - F[7].count('.') - F[7].count(',') - F[7].count('>') - F[7].count('<') + F[7].count('+') + F[7].count('-')
-    # if total_variant_num_ctrl > max_variant_num_ctrl: continue
-    # if total_variant_num_ctrl / int(F[6]) > max_variant_ratio_ctrl: continue
-    
-    # if F[1] == "16640410":
-    #     import pdb; pdb.set_trace()
-
-    # import pdb; pdb.set_trace()
 
     var2num_tumor, ovar2qual_tumor, depth_tumor = check_pileup_record(F[2], F[4], F[5])
 
@@ -44,8 +33,6 @@ def proc_pileup_line(pileup_line, output_file_handle, min_variant_num_tumor = 5,
         if var == F[2].upper(): continue 
         if var2num_tumor[var] < min_variant_num_tumor: continue
         quals = sorted(ovar2qual_tumor[var.lower()] + ovar2qual_tumor[var.upper()], reverse = True)
-        # if quals[0] < 20 or quals[1] < 15 or quals[2] < 15: continue
-        # if max(ovar2qual_tumor[var.lower()] + ovar2qual_tumor[var.upper()]) < 15: continue
         cur_rate = float(var2num_tumor[var]) / depth_tumor
         if cur_rate > bmis_rate_tumor:
             bmis_rate_tumor = cur_rate
@@ -95,14 +82,24 @@ def proc_pileup_line(pileup_line, output_file_handle, min_variant_num_tumor = 5,
 
 def get_mut_region(tumor_bam, control_bam, reference_genome, output_file, region, samtools_options = "-Q 0 -q 40 -B"):
 
+    time.sleep(10)
     hout = open(output_file, 'w')
     samtools_option_list = samtools_options.split(' ')
-    samtools_cmd = ["samtools", "mpileup", tumor_bam, control_bam, "-f", reference_genome, "-r", region] + samtools_option_list
+    samtools_cmd = ["samtools", "mpileup", tumor_bam, control_bam, "-f", reference_genome + "bug", "-r", region] + samtools_option_list
     print(' '.join(samtools_cmd))
     proc = subprocess.Popen(samtools_cmd, stdout = subprocess.PIPE, stderr = subprocess.DEVNULL)
 
-    for pileup_line in proc.stdout:
-        proc_pileup_line(pileup_line.decode(), hout)                
+    try:
+        for pileup_line in proc.stdout:
+            proc_pileup_line(pileup_line.decode(), hout)                
+    except:
+        raise ValueError
+
+    """
+    if proc.returncode != 0:
+        print("samtools mpileup error!")
+        sys.exit(1)
+    """
 
     hout.close()
 
@@ -118,7 +115,7 @@ def main(tumor_bam, control_bam, reference_genome, output_file):
         seq_length = tbamfile.get_reference_length(rname)
         rname2seqlen[rname] = seq_length
 
-    executor = concurrent.futures.ProcessPoolExecutor(max_workers = 8)
+    executor = concurrent.futures.ProcessPoolExecutor(max_workers = 1)
     futures = []
     for rname in rname2seqlen:
         region = rname + ":1-" + str(rname2seqlen[rname])
@@ -126,30 +123,39 @@ def main(tumor_bam, control_bam, reference_genome, output_file):
         futures.append(future)
 
     for future in concurrent.futures.as_completed(futures):
-        if future.exception() is not None:
+        if future.result() is not None or future.exception() is not None:
+            print(future.result())
             print(future.exception())
             executor.shutdown()
             sys.exit(1)
     
-
 
     hout = open(output_file, 'w')
     for rname in rname2seqlen:
         with open(output_file + ".tmp." + rname) as hin:
             for line in hin:
                 print(line.rstrip('\n'), file = hout)
-
+        subprocess.check_call(["rm", "-rf", output_file + ".tmp." + rname])
     hout.close()
 
 
 if __name__ == "__main__":
     
+    """
     tumor_bam = "s3://eva-bucket-tokyo/kataoka-lab/long_read_sequencing/cell-line/minimap2/COLO829.bam"
     control_bam = "s3://eva-bucket-tokyo/kataoka-lab/long_read_sequencing/cell-line/minimap2/COLO829BL.bam"
     reference_genome = "/home/ubuntu/environment/workspace/seq_data/reference/GRCh37.fa"
     output_file = "out.txt"
+    """
 
-    main(tumor_bam, control_bam, reference_genome, output_file)
+    parser = argparse.ArgumentParser(description = "Detecting somatic mutation candidates using Fisher exact tests")
+    parser.add_argument("tumor_bam", type = str, help = "Path to tumor bam file")
+    parser.add_argument("control_bam", type = str, help = "Path to matched control file")
+    parser.add_argument("output_file", type = str, help = "Path to the output file")
+    parser.add_argument("reference", type = str, help = "Path to the reference genome")
+
+    args = parser.parse_args()
+    main(args.tumor_bam, args.control_bam, args.reference, args.output_file)
 
 
     
