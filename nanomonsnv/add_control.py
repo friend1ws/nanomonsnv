@@ -3,7 +3,7 @@
 import sys, re, argparse, statistics, subprocess, concurrent.futures
 import scipy.stats as stats
 
-from utils import check_pileup_record
+from .utils import check_pileup_record
 
 
 def proc_ctrl_pileup_record_info(ref, alt, bases, qualities):
@@ -75,11 +75,11 @@ def add_control_info_region(var_file, control_bam, reference_genome, output_file
 
 
 
-def main(var_file, output_file, control_bam, reference_genome):
+def add_control_main(args):
 
     import pysam
 
-    tbamfile = pysam.AlignmentFile(control_bam[0])
+    tbamfile = pysam.AlignmentFile(args.control_bams[0])
     rname2seqlen = {}
     for i in range(tbamfile.nreferences):
         rname = tbamfile.getrname(i)
@@ -90,7 +90,7 @@ def main(var_file, output_file, control_bam, reference_genome):
     futures = []
     for rname in rname2seqlen:
         region = rname + ":1-" + str(rname2seqlen[rname])
-        future = executor.submit(add_control_info_region, var_file, control_bam, reference_genome, output_file + ".tmp." + rname, region)
+        future = executor.submit(add_control_info_region, args.variant_file, args.control_bams, args.reference, args.output_file + ".tmp." + rname, region)
         futures.append(future)
 
     for future in concurrent.futures.as_completed(futures):
@@ -108,17 +108,17 @@ def main(var_file, output_file, control_bam, reference_genome):
             sys.exit(1)
 
 
-    hout = open(output_file, 'w')
+    hout = open(args.output_file, 'w')
     for rname in rname2seqlen:
-        with open(output_file + ".tmp." + rname) as hin:
+        with open(args.output_file + ".tmp." + rname) as hin:
             for line in hin:
                 print(line.rstrip('\n'), file = hout)
 
 
-
+"""
 if __name__ == "__main__":
 
-    """
+
     var_file = "out.txt"
     output_file = "out2.txt"
     control_bam = ["s3://eva-bucket-tokyo/kataoka-lab/long_read_sequencing/cell-line/minimap2/HCC1954.bam",
@@ -126,7 +126,6 @@ if __name__ == "__main__":
                    "s3://eva-bucket-tokyo/kataoka-lab/long_read_sequencing/cell-line/minimap2/H2009.bam",
                    "s3://eva-bucket-tokyo/kataoka-lab/long_read_sequencing/cell-line/minimap2/BL2009.bam"]
     reference_genome = "/home/ubuntu/environment/workspace/seq_data/reference/GRCh37.fa"
-    """
 
     parser = argparse.ArgumentParser(description = "Adding non-matched control infomation to the variant candidate file")
     parser.add_argument("variant_file", type = str, help = "Path to variant candidate file")
@@ -136,5 +135,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     main(args.variant_file, args.output_file, args.control_bams, args.reference_genome)
-
-
+"""

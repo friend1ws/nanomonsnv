@@ -5,7 +5,7 @@ import scipy.stats as stats
 import time
 
 
-from utils import check_pileup_record
+from .utils import check_pileup_record
 
 
 def proc_pileup_line(pileup_line, output_file_handle, min_variant_num_tumor = 5, min_depth_tumor = 8, min_variant_ratio_tumor = 0.1,
@@ -82,10 +82,11 @@ def proc_pileup_line(pileup_line, output_file_handle, min_variant_num_tumor = 5,
 
 def get_mut_region(tumor_bam, control_bam, reference_genome, output_file, region, samtools_options = "-Q 0 -q 40 -B"):
 
-    time.sleep(10)
+    time.sleep(1)
     hout = open(output_file, 'w')
     samtools_option_list = samtools_options.split(' ')
-    samtools_cmd = ["samtools", "mpileup", tumor_bam, control_bam, "-f", reference_genome + "bug", "-r", region] + samtools_option_list
+    # samtools_cmd = ["samtools", "mpileup", tumor_bam, control_bam, "-f", reference_genome + "bug", "-r", region] + samtools_option_list
+    samtools_cmd = ["samtools", "mpileup", tumor_bam, control_bam, "-f", reference_genome, "-r", region] + samtools_option_list
     print(' '.join(samtools_cmd))
     proc = subprocess.Popen(samtools_cmd, stdout = subprocess.PIPE, stderr = subprocess.DEVNULL)
 
@@ -104,22 +105,22 @@ def get_mut_region(tumor_bam, control_bam, reference_genome, output_file, region
     hout.close()
 
 
-def main(tumor_bam, control_bam, reference_genome, output_file):
+def detect_main(args):
 
     import pysam
 
-    tbamfile = pysam.AlignmentFile(tumor_bam)
+    tbamfile = pysam.AlignmentFile(args.tumor_bam)
     rname2seqlen = {}
     for i in range(tbamfile.nreferences):
         rname = tbamfile.getrname(i)
         seq_length = tbamfile.get_reference_length(rname)
         rname2seqlen[rname] = seq_length
 
-    executor = concurrent.futures.ProcessPoolExecutor(max_workers = 1)
+    executor = concurrent.futures.ProcessPoolExecutor(max_workers = 24)
     futures = []
     for rname in rname2seqlen:
         region = rname + ":1-" + str(rname2seqlen[rname])
-        future = executor.submit(get_mut_region, tumor_bam, control_bam, reference_genome, output_file + ".tmp." + rname, region)
+        future = executor.submit(get_mut_region, args.tumor_bam, args.control_bam, args.reference, args.output_file + ".tmp." + rname, region)
         futures.append(future)
 
     for future in concurrent.futures.as_completed(futures):
@@ -130,23 +131,22 @@ def main(tumor_bam, control_bam, reference_genome, output_file):
             sys.exit(1)
     
 
-    hout = open(output_file, 'w')
+    hout = open(args.output_file, 'w')
     for rname in rname2seqlen:
-        with open(output_file + ".tmp." + rname) as hin:
+        with open(args.output_file + ".tmp." + rname) as hin:
             for line in hin:
                 print(line.rstrip('\n'), file = hout)
-        subprocess.check_call(["rm", "-rf", output_file + ".tmp." + rname])
+        subprocess.check_call(["rm", "-rf", args.output_file + ".tmp." + rname])
     hout.close()
 
 
+"""
 if __name__ == "__main__":
     
-    """
     tumor_bam = "s3://eva-bucket-tokyo/kataoka-lab/long_read_sequencing/cell-line/minimap2/COLO829.bam"
     control_bam = "s3://eva-bucket-tokyo/kataoka-lab/long_read_sequencing/cell-line/minimap2/COLO829BL.bam"
     reference_genome = "/home/ubuntu/environment/workspace/seq_data/reference/GRCh37.fa"
     output_file = "out.txt"
-    """
 
     parser = argparse.ArgumentParser(description = "Detecting somatic mutation candidates using Fisher exact tests")
     parser.add_argument("tumor_bam", type = str, help = "Path to tumor bam file")
@@ -156,6 +156,4 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     main(args.tumor_bam, args.control_bam, args.reference, args.output_file)
-
-
-    
+"""

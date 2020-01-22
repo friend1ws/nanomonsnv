@@ -3,7 +3,7 @@
 import sys, math, subprocess, concurrent.futures, argparse
 import scipy.stats as stats
 
-from utils import check_pileup_record
+from .utils import check_pileup_record
 
 
 def short_read_validate(pileup_line, var_info, output_file_handle):
@@ -62,11 +62,11 @@ def add_validation_info_region(var_file, tumor_bam, control_bam, reference_genom
     hout.close()
 
 
-def main(var_file, output_file, tumor_bam, control_bam, reference_genome):
+def filter_main(args):
 
     import pysam
 
-    tbamfile = pysam.AlignmentFile(tumor_bam)
+    tbamfile = pysam.AlignmentFile(args.tumor_bam)
     rname2seqlen = {}
     for i in range(tbamfile.nreferences):
         rname = tbamfile.getrname(i)
@@ -77,7 +77,7 @@ def main(var_file, output_file, tumor_bam, control_bam, reference_genome):
     futures = []
     for rname in rname2seqlen:
         region = rname + ":1-" + str(rname2seqlen[rname])
-        future = executor.submit(add_validation_info_region, var_file, tumor_bam, control_bam, reference_genome, output_file + ".tmp." + rname, region)
+        future = executor.submit(add_validation_info_region, args.variant_file, args.tumor_bam, args.control_bam, args.reference, args.output_file + ".tmp." + rname, region)
         futures.append(future)
 
     for future in concurrent.futures.as_completed(futures):
@@ -88,16 +88,16 @@ def main(var_file, output_file, tumor_bam, control_bam, reference_genome):
             sys.exit(1)
 
 
-    hout = open(output_file, 'w')
+    hout = open(args.output_file, 'w')
     for rname in rname2seqlen:
-        with open(output_file + ".tmp." + rname) as hin:
+        with open(args.output_file + ".tmp." + rname) as hin:
             for line in hin:
                 print(line.rstrip('\n'), file = hout)
 
 
+"""
 if __name__ == "__main__":
 
-    """
     var_file = "out2.txt"
     output_file = "out3.txt"
     tumor_bam = "s3://eva-bucket-tokyo/kataoka-lab/wgs/cell-line/rawdata/COLO829/COLO829.markdup.bam"
@@ -105,7 +105,6 @@ if __name__ == "__main__":
     reference_genome = "/home/ubuntu/environment/workspace/seq_data/reference/GRCh37.fa"
     # proc_mpileup(input_file, output_file, min_variant_num_tumor = 5, min_variant_ratio_tumor = 0.15)
     # short_read_validate(var_file, illumina_file, output_file)
-    """
 
 
     irser = argparse.ArgumentParser(description = "Validation using Illumina short read tumor and control sequencing data")
@@ -119,4 +118,4 @@ if __name__ == "__main__":
 
     main(args.variant_file, args.output_file, args.tumor_bam, args.control_bam, args.reference_genome)
 
-
+"""
