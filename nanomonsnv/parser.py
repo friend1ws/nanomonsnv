@@ -10,7 +10,7 @@ import argparse
 from .version import __version__
 from .detect import detect_main
 from .add_control import add_control_main
-from .filter import filter_main
+from .validate import validate_main
 
 def create_parser():
     prog = "nanomonsnv"
@@ -25,6 +25,7 @@ def create_parser():
         detect_parser.add_argument("control_bam", type = str, help = "Path to matched control file")
         detect_parser.add_argument("output_file", type = str, help = "Path to the output file")
         detect_parser.add_argument("reference", type = str, help = "Path to the reference genome")
+        detect_parser.add_argument("--max_workers", type = int, help = "The maximum number of processes that can be used to execute", default=1)
         return detect_parser
 
     def _create_add_control_parser(subparsers):
@@ -36,20 +37,22 @@ def create_parser():
         add_control_parser.add_argument("control_bams", type = str, nargs='+', help = "Path to non-matched control files")
         return add_control_parser
         
-    def _create_filt_parser(subparsers):
+    def _create_validate_parser(subparsers):
     
-        filt_parser = subparsers.add_parser("filter", help = "Validation using Illumina short read tumor and control sequencing data")
-        filt_parser.add_argument("variant_file", type = str, help = "Path to variant candidate file")
-        filt_parser.add_argument("tumor_bam", type = str, help = "Path to Illumina tumor bam file")
-        filt_parser.add_argument("control_bam", type = str, help = "Path to Illumina matched control file")
-        filt_parser.add_argument("output_file", type = str, help = "Path to the output file")
-        filt_parser.add_argument("reference", type = str, help = "Path to the reference genome")
-        return filt_parser
-        
+        validate_parser = subparsers.add_parser("validate", help = "Validation using Illumina short read tumor and control sequencing data")
+        validate_parser.add_argument("variant_file", type = str, help = "Path to variant candidate file")
+        validate_parser.add_argument("tumor_bam", type = str, help = "Path to Illumina tumor bam file")
+        validate_parser.add_argument("control_bam", type = str, help = "Path to Illumina matched control file")
+        validate_parser.add_argument("output_file", type = str, help = "Path to the output file")
+        validate_parser.add_argument("reference", type = str, help = "Path to the reference genome")
+        return validate_parser
+
+
     detect_parser = _create_detect_parser(subparsers)
     detect_parser.set_defaults(func = detect_main)
     add_control_parser = _create_add_control_parser(subparsers)
     add_control_parser.set_defaults(func = add_control_main)
-    filt_parser = _create_filt_parser(subparsers)
-    filt_parser.set_defaults(func = filter_main)
+    validate_parser = _create_validate_parser(subparsers)
+    validate_parser.set_defaults(func = validate_main)
     return parser
+

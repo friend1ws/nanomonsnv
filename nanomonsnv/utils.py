@@ -4,10 +4,12 @@ import sys
 import re
 import pysam
 
-def check_pileup_record(ref, bases, qualities):
+# def check_pileup_record(ref, bases, base_qualities, mapping_qualities):
+def check_pileup_record(ref, bases, base_qualities):
 
     var2num = {'A': 0, 'C': 0, 'G': 0, 'T': 0, 'N': 0}
-    ovar2qual = {'A': [], 'C': [], 'G': [], 'T': [], 'N': [], 'a': [], 'c': [], 'g': [], 't': [], 'n': []}
+    ovar2bq = {'A': [], 'C': [], 'G': [], 'T': [], 'N': [], 'a': [], 'c': [], 'g': [], 't': [], 'n': []}
+    # ovar2mq = {'A': [], 'C': [], 'G': [], 'T': [], 'N': [], 'a': [], 'c': [], 'g': [], 't': [], 'n': []}
     base_ind = 0
     depth = 0
     check_count = 0
@@ -26,7 +28,9 @@ def check_pileup_record(ref, bases, qualities):
             else:
                 var_original = ref.upper() if bases[0] == '.' else ref.lower()
 
-            ovar2qual[var_original].append(ord(qualities[base_ind]) - 33)
+            ovar2bq[var_original].append(ord(base_qualities[base_ind]) - 33)
+            # ovar2mq[var_original].append(ord(mapping_qualities[base_ind]) - 33)
+            
             var = var_original.upper()
             var2num[var] = var2num[var] + 1
             depth = depth + 1     
@@ -38,12 +42,13 @@ def check_pileup_record(ref, bases, qualities):
             indel_size = int(match.group(1))
             bases = bases[(len(str(indel_size)) + indel_size + 1):]
 
-    if len(qualities) != base_ind:
+    # if len(base_qualities) != base_ind or len(mapping_qualities) != base_ind:
+    if len(base_qualities) != base_ind:
         print("Error???")
         sys.exit(1)
 
-    return([var2num, ovar2qual, depth])
-
+    # return([var2num, ovar2bq, ovar2mq, depth])
+    return([var2num, ovar2bq, depth])
 
 
 def get_seq(reference, chr, start, end):

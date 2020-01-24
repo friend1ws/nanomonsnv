@@ -2,6 +2,7 @@
 
 import sys, re, argparse, statistics, subprocess, concurrent.futures
 import scipy.stats as stats
+import os
 
 from .utils import check_pileup_record
 
@@ -113,6 +114,7 @@ def add_control_main(args):
         with open(args.output_file + ".tmp." + rname) as hin:
             for line in hin:
                 print(line.rstrip('\n'), file = hout)
+        os.remove(args.output_file + ".tmp." + rname)
 
 
 """

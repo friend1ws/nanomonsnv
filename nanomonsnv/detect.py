@@ -3,6 +3,7 @@
 import subprocess, re, sys, math, statistics, argparse, concurrent.futures 
 import scipy.stats as stats
 import time
+import os
 
 
 from .utils import check_pileup_record
@@ -14,6 +15,16 @@ def proc_pileup_line(pileup_line, output_file_handle, min_variant_num_tumor = 5,
 
     F = pileup_line.rstrip('\n').split('\t')
 
+    # Pileup format
+    # chrom, pos, referece base, the number of reads, read bases, base qualities, mapping qualities,
+    # [0],   [1], [2],           [3],                 [4],        [5],            [6],
+    #                            [7],                 [8],        [9],           [10] 
+    # seq2 156 A 11  .$......+2AG.+2AG.+2AGGG <975;:<<<<< [[[[[[[[[[[
+    #
+    # chrom, pos, referece base, the number of reads, read bases, base qualities
+    # [0],   [1], [2],           [3],                 [4],        [5],
+    #                            [6],                 [7],        [8]
+
     if int(F[3]) < min_depth_tumor: return        
     # first simple check
     total_variant_num_tumor = int(F[3]) - F[4].count('.') - F[4].count(',') - F[4].count('>') - F[4].count('<') + F[4].count('+') + F[4].count('-')
@@ -22,8 +33,8 @@ def proc_pileup_line(pileup_line, output_file_handle, min_variant_num_tumor = 5,
 
     if int(F[6]) < min_depth_ctrl: return 
 
-
-    var2num_tumor, ovar2qual_tumor, depth_tumor = check_pileup_record(F[2], F[4], F[5])
+    # var2num_tumor, ovar2bq_tumor, over2mq_tumor, depth_tumor = check_pileup_record(F[2], F[4], F[5], F[6])
+    var2num_tumor, ovar2bq_tumor, depth_tumor = check_pileup_record(F[2], F[4], F[5])
 
     if depth_tumor < min_depth_tumor: return
 
@@ -32,7 +43,7 @@ def proc_pileup_line(pileup_line, output_file_handle, min_variant_num_tumor = 5,
     for var in ['A', 'C', 'G', 'T']:
         if var == F[2].upper(): continue 
         if var2num_tumor[var] < min_variant_num_tumor: continue
-        quals = sorted(ovar2qual_tumor[var.lower()] + ovar2qual_tumor[var.upper()], reverse = True)
+        quals = sorted(ovar2bq_tumor[var.lower()] + ovar2bq_tumor[var.upper()], reverse = True)
         cur_rate = float(var2num_tumor[var]) / depth_tumor
         if cur_rate > bmis_rate_tumor:
             bmis_rate_tumor = cur_rate
@@ -41,25 +52,26 @@ def proc_pileup_line(pileup_line, output_file_handle, min_variant_num_tumor = 5,
     if bmis_rate_tumor < min_variant_ratio_tumor: return
     if var2num_tumor[bvar] < min_variant_num_tumor: return
 
-    strandness_tumor = len(ovar2qual_tumor[bvar.lower()]) / (len(ovar2qual_tumor[bvar.lower()]) + len(ovar2qual_tumor[bvar.upper()]))
-    quals = sorted(ovar2qual_tumor[bvar.lower()] + ovar2qual_tumor[bvar.upper()], reverse = True)
+    strandness_tumor = len(ovar2bq_tumor[bvar.lower()]) / (len(ovar2bq_tumor[bvar.lower()]) + len(ovar2bq_tumor[bvar.upper()]))
+    quals = sorted(ovar2bq_tumor[bvar.lower()] + ovar2bq_tumor[bvar.upper()], reverse = True)
     if len(quals) < 1:
         import pdb; pdb.set_trace()
     max_base_qual_tumor = quals[0]
     second_max_base_qual_tumor = quals[1]
     median_base_qual_tumor = statistics.median(quals)
-    max_plus_base_qual_tumor = sorted(ovar2qual_tumor[bvar.upper()], reverse = True)[0] if len(ovar2qual_tumor[bvar.upper()]) > 0 else "---"
-    max_minus_base_qual_tumor = sorted(ovar2qual_tumor[bvar.lower()], reverse = True)[0] if len(ovar2qual_tumor[bvar.lower()]) > 0 else "---"
+    max_plus_base_qual_tumor = sorted(ovar2bq_tumor[bvar.upper()], reverse = True)[0] if len(ovar2bq_tumor[bvar.upper()]) > 0 else "---"
+    max_minus_base_qual_tumor = sorted(ovar2bq_tumor[bvar.lower()], reverse = True)[0] if len(ovar2bq_tumor[bvar.lower()]) > 0 else "---"
 
     var_info = []
     for bb in ['A', 'C', 'G', 'T', 'N', 'a', 'c', 'g', 't', 'n']:
-        var_info.append(','.join([str(x) for x in ovar2qual_tumor[bb]]) if len(ovar2qual_tumor[bb]) > 0 else '---')
+        var_info.append(','.join([str(x) for x in ovar2bq_tumor[bb]]) if len(ovar2bq_tumor[bb]) > 0 else '---')
 
     pos, ref, alt = F[1], F[2], bvar
 
     ##########
     # control check
-    var2num_ctrl, ovar2qual_ctrl, depth_ctrl = check_pileup_record(F[2], F[7], F[8])
+    # var2num_ctrl, ovar2bq_ctrl, over2mq_ctrl, depth_ctrl = check_pileup_record(F[2], F[8], F[9], F[10])
+    var2num_ctrl, ovar2bq_ctrl, depth_ctrl = check_pileup_record(F[2], F[7], F[8])
 
     if depth_ctrl < min_depth_ctrl: return 
     if var2num_ctrl[bvar] > max_variant_num_ctrl: return
@@ -79,7 +91,7 @@ def proc_pileup_line(pileup_line, output_file_handle, min_variant_num_tumor = 5,
 
 
 
-
+# def get_mut_region(tumor_bam, control_bam, reference_genome, output_file, region, samtools_options = "-Q 0 -q 40 -B -s"):
 def get_mut_region(tumor_bam, control_bam, reference_genome, output_file, region, samtools_options = "-Q 0 -q 40 -B"):
 
     time.sleep(1)
@@ -88,13 +100,12 @@ def get_mut_region(tumor_bam, control_bam, reference_genome, output_file, region
     # samtools_cmd = ["samtools", "mpileup", tumor_bam, control_bam, "-f", reference_genome + "bug", "-r", region] + samtools_option_list
     samtools_cmd = ["samtools", "mpileup", tumor_bam, control_bam, "-f", reference_genome, "-r", region] + samtools_option_list
     print(' '.join(samtools_cmd))
-    proc = subprocess.Popen(samtools_cmd, stdout = subprocess.PIPE, stderr = subprocess.DEVNULL)
-
-    try:
-        for pileup_line in proc.stdout:
-            proc_pileup_line(pileup_line.decode(), hout)                
-    except:
-        raise ValueError
+    with subprocess.Popen(samtools_cmd, stdout = subprocess.PIPE, stderr = subprocess.DEVNULL) as proc:
+        try:
+            for pileup_line in proc.stdout:
+                proc_pileup_line(pileup_line.decode(), hout)                
+        except:
+            raise ValueError
 
     """
     if proc.returncode != 0:
@@ -116,27 +127,37 @@ def detect_main(args):
         seq_length = tbamfile.get_reference_length(rname)
         rname2seqlen[rname] = seq_length
 
-    executor = concurrent.futures.ProcessPoolExecutor(max_workers = 24)
-    futures = []
-    for rname in rname2seqlen:
-        region = rname + ":1-" + str(rname2seqlen[rname])
-        future = executor.submit(get_mut_region, args.tumor_bam, args.control_bam, args.reference, args.output_file + ".tmp." + rname, region)
-        futures.append(future)
+    if args.max_workers > 1:
 
-    for future in concurrent.futures.as_completed(futures):
-        if future.result() is not None or future.exception() is not None:
-            print(future.result())
-            print(future.exception())
-            executor.shutdown()
-            sys.exit(1)
+        executor = concurrent.futures.ProcessPoolExecutor(max_workers = args.max_workers)
+        futures = []
+        for rname in rname2seqlen:
+            region = rname + ":1-" + str(rname2seqlen[rname])
+            future = executor.submit(get_mut_region, args.tumor_bam, args.control_bam, args.reference, args.output_file + ".tmp." + rname, region)
+            futures.append(future)
     
-
+        for future in concurrent.futures.as_completed(futures):
+            if future.result() is not None or future.exception() is not None:
+                print(future.result())
+                print(future.exception())
+                executor.shutdown()
+                sys.exit(1)
+    
+    else:
+        # if args.max_workers == 1
+        for rname in rname2seqlen:
+            region = rname + ":1-" + str(rname2seqlen[rname])
+            get_mut_region(args.tumor_bam, args.control_bam, args.reference, args.output_file + ".tmp." + rname, region)
+        
+    
     hout = open(args.output_file, 'w')
     for rname in rname2seqlen:
         with open(args.output_file + ".tmp." + rname) as hin:
             for line in hin:
                 print(line.rstrip('\n'), file = hout)
-        subprocess.check_call(["rm", "-rf", args.output_file + ".tmp." + rname])
+        # subprocess.check_call(["rm", "-rf", args.output_file + ".tmp." + rname])
+        os.remove(args.output_file + ".tmp." + rname)
+            
     hout.close()
 
 
