@@ -35,6 +35,7 @@ def create_parser():
         add_control_parser.add_argument("output_file", type = str, help = "Path to the output file")
         add_control_parser.add_argument("reference", type = str, help = "Path to the reference genome")
         add_control_parser.add_argument("control_bams", type = str, nargs='+', help = "Path to non-matched control files")
+        add_control_parser.add_argument("--max_workers", type = int, help = "The maximum number of processes that can be used to execute", default=1)
         return add_control_parser
         
     def _create_validate_parser(subparsers):
@@ -45,6 +46,7 @@ def create_parser():
         validate_parser.add_argument("control_bam", type = str, help = "Path to Illumina matched control file")
         validate_parser.add_argument("output_file", type = str, help = "Path to the output file")
         validate_parser.add_argument("reference", type = str, help = "Path to the reference genome")
+        validate_parser.add_argument("--max_workers", type = int, help = "The maximum number of processes that can be used to execute", default=1)
         return validate_parser
 
 

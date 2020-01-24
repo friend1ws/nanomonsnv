@@ -2,7 +2,7 @@
 
 import sys, math, subprocess, concurrent.futures, argparse
 import scipy.stats as stats
-import os
+import os, time
 
 from .utils import check_pileup_record
 
@@ -48,17 +48,18 @@ def add_validation_info_region(var_file, tumor_bam, control_bam, reference_genom
                 chr_pos2info[F[0] + '\t' +  F[1]] = '\t'.join(F)
 
 
+    time.sleep(1)
     hout = open(output_file, 'w')
     samtools_option_list = samtools_options.split(' ')
     samtools_cmd = ["samtools", "mpileup", tumor_bam, control_bam, "-f", reference_genome, "-r", region] + samtools_option_list
     print(' '.join(samtools_cmd))
-    proc = subprocess.Popen(samtools_cmd, stdout = subprocess.PIPE) # , stderr = subprocess.DEVNULL)
+    with subprocess.Popen(samtools_cmd, stdout = subprocess.PIPE) as proc: # , stderr = subprocess.DEVNULL)
 
-    for pileup_line in proc.stdout:
-        F = pileup_line.decode().rstrip('\n').split('\t')
-        if F[0] + '\t' + F[1] not in chr_pos2info: continue
-        var_info = chr_pos2info[F[0] + '\t' + F[1]].split('\t')
-        short_read_validate(pileup_line.decode(), var_info, hout)
+        for pileup_line in proc.stdout:
+            F = pileup_line.decode().rstrip('\n').split('\t')
+            if F[0] + '\t' + F[1] not in chr_pos2info: continue
+            var_info = chr_pos2info[F[0] + '\t' + F[1]].split('\t')
+            short_read_validate(pileup_line.decode(), var_info, hout)
 
     hout.close()
 
@@ -74,20 +75,26 @@ def validate_main(args):
         seq_length = tbamfile.get_reference_length(rname)
         rname2seqlen[rname] = seq_length
 
-    executor = concurrent.futures.ProcessPoolExecutor(max_workers = 8)
-    futures = []
-    for rname in rname2seqlen:
-        region = rname + ":1-" + str(rname2seqlen[rname])
-        future = executor.submit(add_validation_info_region, args.variant_file, args.tumor_bam, args.control_bam, args.reference, args.output_file + ".tmp." + rname, region)
-        futures.append(future)
+    if args.max_workers > 1:
+        executor = concurrent.futures.ProcessPoolExecutor(max_workers = args.max_workers)
+        futures = []
+        for rname in rname2seqlen:
+            region = rname + ":1-" + str(rname2seqlen[rname])
+            future = executor.submit(add_validation_info_region, args.variant_file, args.tumor_bam, args.control_bam, args.reference, args.output_file + ".tmp." + rname, region)
+            futures.append(future)
+    
+        for future in concurrent.futures.as_completed(futures):
+            if future.exception() is not None or future.result() is not None:
+                print(future.exception())
+                print(future.result())
+                executor.shutdown()
+                sys.exit(1)
 
-    for future in concurrent.futures.as_completed(futures):
-        if future.exception() is not None or future.result() is not None:
-            print(future.exception())
-            print(future.result())
-            executor.shutdown()
-            sys.exit(1)
-
+    else:
+    # if args.max_workers == 1
+        for rname in rname2seqlen:
+            region = rname + ":1-" + str(rname2seqlen[rname])
+            add_validation_info_region(args.variant_file, args.tumor_bam, args.control_bam, args.reference, args.output_file + ".tmp." + rname, region)
 
     hout = open(args.output_file, 'w')
     for rname in rname2seqlen:
@@ -95,6 +102,8 @@ def validate_main(args):
             for line in hin:
                 print(line.rstrip('\n'), file = hout)
         os.remove(args.output_file + ".tmp." + rname)
+
+    hout.close()
 
 """
 if __name__ == "__main__":
