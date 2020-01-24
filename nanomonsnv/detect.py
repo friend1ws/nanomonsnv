@@ -100,7 +100,7 @@ def get_mut_region(tumor_bam, control_bam, reference_genome, output_file, region
     # samtools_cmd = ["samtools", "mpileup", tumor_bam, control_bam, "-f", reference_genome + "bug", "-r", region] + samtools_option_list
     samtools_cmd = ["samtools", "mpileup", tumor_bam, control_bam, "-f", reference_genome, "-r", region] + samtools_option_list
     print(' '.join(samtools_cmd))
-    with subprocess.Popen(samtools_cmd, stdout = subprocess.PIPE, stderr = subprocess.DEVNULL) as proc:
+    with subprocess.Popen(samtools_cmd, stdout = subprocess.PIPE) as proc: #, stderr = subprocess.DEVNULL
         try:
             for pileup_line in proc.stdout:
                 proc_pileup_line(pileup_line.decode(), hout)                

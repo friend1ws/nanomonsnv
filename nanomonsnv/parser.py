@@ -49,12 +49,14 @@ def create_parser():
         validate_parser.add_argument("--max_workers", type = int, help = "The maximum number of processes that can be used to execute", default=1)
         return validate_parser
 
-
     detect_parser = _create_detect_parser(subparsers)
     detect_parser.set_defaults(func = detect_main)
     add_control_parser = _create_add_control_parser(subparsers)
     add_control_parser.set_defaults(func = add_control_main)
     validate_parser = _create_validate_parser(subparsers)
     validate_parser.set_defaults(func = validate_main)
+    
+    if not hasattr(parser.parse_args(), 'func'):
+        parser.error('too few arguments')
+    
     return parser
-

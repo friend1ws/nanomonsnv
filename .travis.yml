@@ -20,7 +20,7 @@ before_script:
 script:
     - pip install .
     - python3 setup.py tests
-    - python3 -m unittest tests.test_detect
+    - python3 -m unittest tests
 
 notifications:
     emails:
