@@ -122,6 +122,7 @@ def add_control_main(args):
                 print(line.rstrip('\n'), file = hout)
         os.remove(args.output_file + ".tmp." + rname)
 
+    hout.close()
 
 """
 if __name__ == "__main__":

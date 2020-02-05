@@ -14,9 +14,9 @@ class Test_utils_main(unittest.TestCase):
         base_qualities = ",50)6.&+(/%;*5-,(/01)0/53,(%*+($28(%,-4-'2#4+&,)/.',*-28$%'0.'#256"
         var2num, ovar2bq, depth = utils.check_pileup_record(ref, bases, base_qualities)
 
-        print(var2num)
-        print(ovar2bq)
-        print(depth)
+        # print(var2num)
+        # print(ovar2bq)
+        # print(depth)
 
         ans_var2num = {'A': 30, 'C': 1, 'G': 0, 'T': 29, 'N': 0}
         ans_ovar2bq = {'A': [13, 5, 7, 16, 4, 11, 2, 8, 14, 6, 11, 4, 2, 20], 

@@ -11,6 +11,7 @@ from .version import __version__
 from .detect import detect_main
 from .add_control import add_control_main
 from .validate import validate_main
+from .filter import filter_main
 
 def create_parser():
     prog = "nanomonsnv"
@@ -48,6 +49,15 @@ def create_parser():
         validate_parser.add_argument("reference", type = str, help = "Path to the reference genome")
         validate_parser.add_argument("--max_workers", type = int, help = "The maximum number of processes that can be used to execute", default=1)
         return validate_parser
+        
+    def _create_filter_parser(subparsers):
+    
+        filter_parser = subparsers.add_parser("filter", help = "")
+        filter_parser.add_argument("variant_file", type = str, help = "Path to variant candidate file")
+        filter_parser.add_argument("output_file", type = str, help = "Path to the output file")
+        filter_parser.add_argument("gnomad_file", type = str, help = "Path to genomAD file")
+        filter_parser.add_argument("simple_repeat_file", type = str, help = "Path to Simplerepeat file")
+        return filter_parser
 
     detect_parser = _create_detect_parser(subparsers)
     detect_parser.set_defaults(func = detect_main)
@@ -55,8 +65,7 @@ def create_parser():
     add_control_parser.set_defaults(func = add_control_main)
     validate_parser = _create_validate_parser(subparsers)
     validate_parser.set_defaults(func = validate_main)
-    
-    if not hasattr(parser.parse_args(), 'func'):
-        parser.error('too few arguments')
+    filter_parser = _create_filter_parser(subparsers)
+    filter_parser.set_defaults(func = filter_main)   
     
     return parser
