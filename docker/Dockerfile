@@ -35,7 +35,7 @@ RUN pip3 install statistics==1.0.3.5
 RUN pip3 install numpy==1.15.1
 RUN pip3 install awscli boto3
 
-RUN wget https://github.com/pysam-devlelopers/pysam/archive/v0.15.2.tar.gz && \
+RUN wget https://github.com/pysam-developers/pysam/archive/v0.15.2.tar.gz && \
     tar -zxvf v0.15.2.tar.gz && \
     rm v0.15.2.tar.gz && \
     cd pysam-0.15.2 && python3 setup.py build install

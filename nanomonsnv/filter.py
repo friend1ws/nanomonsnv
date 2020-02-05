@@ -56,7 +56,7 @@ def annotate_anno(variant_file, output_file, gnomad_genome, simple_repeat):
                         if record[0] != "chr"+chrom: continue
                         if record[1] >= F[1]: continue
                         if record[2] < F[1]: continue
-                        repeat_seq.append(record[3])
+                        repeat_seq.append(record[15])
 
                 nanosnv_record = nanosnv_record + "\t" + ",".join(repeat_seq)
 
