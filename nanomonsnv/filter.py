@@ -3,18 +3,30 @@
 import sys, argparse
 import os, time
 import pysam
-
-target_rnames = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "X", "Y"]
-
+import subprocess
 
 def annotate_anno(variant_file, output_file, gnomad_genome, simple_repeat):
 
-    if gnomad_genome is not None: gnomad_genome_db = pysam.Tabixfile(gnomad_genome, encoding="utf-8")
-    if simple_repeat is not None: simple_repeat_db = pysam.Tabixfile(simple_repeat, encoding="utf-8")
+    target_rnames_gnomad = []
+    if gnomad_genome is not None:
+        gnomad_genome_db = pysam.Tabixfile(gnomad_genome, encoding="utf-8")
 
-    header_end_flag = False
-    info_start_flag = False
-    info_end_flag = False
+        tabix_cmd = ['tabix','-l',gnomad_genome]
+        with subprocess.Popen(tabix_cmd, stdout = subprocess.PIPE) as proc:
+            for chromosome_name in proc.stdout:
+                chromosome_name = chromosome_name.decode().rstrip('\n')
+                target_rnames_gnomad.append(chromosome_name)
+
+    target_rnames_simple_repeat = []
+    if simple_repeat is not None:
+        simple_repeat_db = pysam.Tabixfile(simple_repeat, encoding="utf-8")
+
+        tabix_cmd = ['tabix','-l',simple_repeat]
+        with subprocess.Popen(tabix_cmd, stdout = subprocess.PIPE) as proc:
+            for chromosome_name in proc.stdout:
+                chromosome_name = chromosome_name.decode().rstrip('\n')
+                target_rnames_simple_repeat.append(chromosome_name)
+                
 
     hout = open(output_file, 'w')
     with open(variant_file, 'r') as hin:
@@ -34,7 +46,7 @@ def annotate_anno(variant_file, output_file, gnomad_genome, simple_repeat):
             if gnomad_genome is not None:
 
                 GNOMAD_GENOME = 0
-                if chrom in target_rnames + ["chr" + x for x in target_rnames]:
+                if chrom in target_rnames_gnomad:
                     for record_line in gnomad_genome_db.fetch(chrom, int(F[1]) - 1, int(F[1]) + 1):
                         record = record_line.split('\t')
                         if record[0] != chrom: continue
@@ -45,12 +57,14 @@ def annotate_anno(variant_file, output_file, gnomad_genome, simple_repeat):
                         for info in infos:
                             if info.startswith("AF="):
                                 GNOMAD_GENOME = float(info.replace("AF=", ''))
+                                break
                 nanosnv_record = nanosnv_record + "\t" + str(round(GNOMAD_GENOME, 4))
+                
 
             if simple_repeat is not None:
             
                 repeat_seq = []
-                if chrom in target_rnames + ["chr" + x for x in target_rnames]:
+                if "chr" + chrom in target_rnames_simple_repeat:
                     for record_line in simple_repeat_db.fetch("chr"+chrom, int(F[1]) - 1, int(F[1]) + 1):
                         record = record_line.split('\t')
                         if record[0] != "chr"+chrom: continue

@@ -15,7 +15,6 @@ RUN apt-get update && apt-get install -y \
     python3 \
     python3-pip
 
-
 RUN wget https://github.com/samtools/samtools/releases/download/1.9/samtools-1.9.tar.bz2 && \
     tar jxvf samtools-1.9.tar.bz2 && \
     rm samtools-1.9.tar.bz2 && \
@@ -42,9 +41,10 @@ RUN wget https://github.com/pysam-developers/pysam/archive/v0.15.2.tar.gz && \
 
 ENV LD_LIBRARY_PATH /usr/local/lib:$LD_LIBRARY_PATH
 
-RUN wget https://github.com/ncc-ccat-gap/nanomonsnv/archive/v0.0.3.tar.gz && \
-    tar -zxvf v0.0.3.tar.gz && \
-    rm v0.0.3.tar.gz && \
-    cd nanomonsnv-0.0.3 && \
+RUN wget https://github.com/ncc-ccat-gap/nanomonsnv/archive/v0.0.4.tar.gz && \
+    tar -zxvf v0.0.4.tar.gz && \
+    rm v0.0.4.tar.gz && \
+    cd nanomonsnv-0.0.4 && \
     python3 setup.py build install
 
+RUN apt-get install tabix
