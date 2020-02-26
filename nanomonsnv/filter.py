@@ -28,6 +28,7 @@ def annotate_anno(variant_file, output_file, gnomad_genome, simple_repeat):
                 target_rnames_simple_repeat.append(chromosome_name)
                 
 
+    header_end_flag = False
     hout = open(output_file, 'w')
     with open(variant_file, 'r') as hin:
         for line in hin:
