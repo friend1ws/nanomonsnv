@@ -16,6 +16,7 @@ def annotate_anno(variant_file, output_file, ccl_tabix):
     proc.stdout.close()
     proc.wait()
     
+    header_end_flag = False
     ccl_tabix_db = pysam.Tabixfile(ccl_tabix, encoding="utf-8")
     hout = open(output_file, 'w')
     with open(variant_file, 'r') as hin:
@@ -40,35 +41,24 @@ def annotate_anno(variant_file, output_file, ccl_tabix):
             
                 called_by = False
                 if chrom in target_rnames_ccl:
-                    for record_line in ccl_tabix_db.fetch(chrom, int(pos) - 2, int(pos) + 1):
+                    for record_line in ccl_tabix_db.fetch(chrom, int(pos) - 1, int(pos) + 1):
                         record = record_line.split('\t')
                         
                         TYPE = ""
-                        continue_flag = False
+                        continue_flag = True
                         infos = record[7].split(';')
                         for info in infos:
                             if info.startswith("TYPE="):
                                 TYPE = info.replace("TYPE=", '')
-                                if TYPE not in ["SNV","MNV"]:
-                                    continue_flag = True
+                                if TYPE in ["SNV","MNV"]:
+                                    continue_flag = False
                                     break
                         
                         if continue_flag: continue
                         if record[0] != chrom: continue
-                        
-                        if TYPE == "MNV":
-                            # print("MNV")
-                            # print("pos:"+pos)
-                            # print("rec:"+record[1])
-                            if int(pos) < int(record[1]): continue
-                            pos_idx = int(pos) - int(record[1])
-                            if str(int(record[1]) + pos_idx) != pos: continue
-                            if pos_idx >= len(record[4]) or record[4][pos_idx] != alt: continue
-                        else:
-                            # print("SNV")
-                            if record[1] != pos: continue
-                            if record[4] != alt: continue
-                            
+                        if record[1] != pos: continue
+                        if record[4] != alt: continue
+
                         infos = record[7].split(';')
                         for info in infos:
                             if info.startswith("called_by="):
