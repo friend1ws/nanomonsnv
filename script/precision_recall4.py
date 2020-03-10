@@ -82,104 +82,95 @@ def annotate_anno(variant_file, output_file, ccl_tabix, chrom_idx, pos_idx, ref_
     hout = open(output_file, 'w')
     with open(variant_file, 'r') as hin:
         for line in hin:
+
+            if line.startswith('#'): continue
+        
             line = line.rstrip('\n')
-            
-            if line.startswith('#'):
-                print(line, file = hout)
-            else:
-                header_end_flag = True
-            
-            if not header_end_flag: continue
-            
-            nanosnv_record = line
             F = line.split('\t')
-            # chrom = "chr"+F[0]
+            nanosnv_record = line
+            
             chrom = F[chrom_idx]
             pos = F[pos_idx]
             ref = F[ref_idx]
             alt = F[alt_idx]
             
             if ref == "-" or alt == "-": continue
-            
-            if ccl_tabix is not None:
-
-                called_by = False
-                if chrom in target_rnames_ccl:
-                    for record_line in ccl_tabix_db.fetch(chrom, int(pos) - 1, int(pos) + 1):
-                        record = record_line.split('\t')
-                        
-                        TYPE = ""
-                        continue_flag = True
-                        infos = record[7].split(';')
-                        for info in infos:
-                            if info.startswith("TYPE="):
-                                TYPE = info.replace("TYPE=", '')
-                                if TYPE in ["SNV","MNV"]:
-                                    continue_flag = False
-                                    break
-                        
-                        if continue_flag: continue
-                        if record[0] != chrom: continue
-                        if record[1] != pos: continue
-                        if record[4] != alt: continue
-
-                        infos = record[7].split(';')
-                        for info in infos:
-                            if info.startswith("called_by="):
-                                # called_by = info.replace("called_by=", '')
-                                called_by = True
-                                break
-
-                nanosnv_record = nanosnv_record + "\t" + str(called_by)
+            if chrom not in target_rnames_ccl: continue
                 
+            called_by = "False"
+            for record_line in ccl_tabix_db.fetch(chrom, int(pos) - 1, int(pos) + 1):
+                record = record_line.split('\t')
+                
+                TYPE = ""
+                continue_flag = True
+                infos = record[7].split(';')
+                for info in infos:
+                    if info.startswith("TYPE="):
+                        TYPE = info.replace("TYPE=", '')
+                        if TYPE in ["SNV","MNV"]:
+                            continue_flag = False
+                            break
+                
+                if continue_flag: continue
+                if record[0] != chrom: continue
+                if record[1] != pos: continue
+                if record[4] != alt: continue
+
+                called_by = "True"
+                break
+
+            nanosnv_record = nanosnv_record + "\t" + called_by
+            
             print(nanosnv_record, file = hout)  
 
     hout.close()            
 
 
-input_file = sys.argv[1]
-output_file = sys.argv[2]
-ccl_tabix = sys.argv[3]
-illumina_file = sys.argv[4]
-illumina_file2 = sys.argv[5]
+if __name__ == "__main__":
 
-cmd = ["sort", "-k", "11", "-r", "-n", input_file]
-with open(output_file+".sorted.txt", 'w') as hout:
-    subprocess.check_call(cmd, stdout=hout)
-
-cmd = ["sort", "-k", "18", "-r", "-n", illumina_file]
-with open(output_file+".sorted.illumina.txt", 'w') as hout:
-    subprocess.check_call(cmd, stdout=hout)
-
-if illumina_file2 != "None":
-    cmd = ["sort", "-k", "18", "-r", "-n", illumina_file2]
-    with open(output_file+".sorted.illumina2.txt", 'w') as hout:
-        subprocess.check_call(cmd, stdout=hout)
-
-annotate_anno(output_file+".sorted.txt", output_file+".anno.txt", ccl_tabix, 0,1,2,3)
-annotate_anno(output_file+".sorted.illumina.txt", output_file+".anno.illumina.txt", ccl_tabix, 0,1,3,4)
-if illumina_file2 != "None":
-    annotate_anno(output_file+".sorted.illumina2.txt", output_file+".anno.illumina2.txt", ccl_tabix, 0,1,3,4)
+    input_file = sys.argv[1]
+    output_file = sys.argv[2]
+    ccl_tabix = sys.argv[3]
+    illumina_file = sys.argv[4]
+    illumina_file2 = sys.argv[5]
     
-shutil.copy(output_file+".anno.txt", output_file+".filt1.txt")
-filter_result(output_file+".anno.txt", output_file+".filt2.txt", 2)
-filter_result(output_file+".anno.txt", output_file+".filt3.txt", 3)
-
-with open(output_file, 'w') as hout:
-    get_presigion_recall(output_file+".filt1.txt","Method1", hout, 38)
-    get_presigion_recall(output_file+".filt2.txt","Method2", hout, 38)
-    get_presigion_recall(output_file+".filt3.txt","Method3", hout, 38)
-    get_presigion_recall(output_file+".anno.illumina.txt","Illumina", hout, 31)
+    cmd = ["sort", "-k", "11", "-r", "-n", input_file]
+    with open(output_file+".sorted.txt", 'w') as hout:
+        subprocess.check_call(cmd, stdout=hout)
+    
+    cmd = ["sort", "-k", "18", "-r", "-n", illumina_file]
+    with open(output_file+".sorted.illumina.txt", 'w') as hout:
+        subprocess.check_call(cmd, stdout=hout)
+    
     if illumina_file2 != "None":
-        get_presigion_recall(output_file+".anno.illumina2.txt","Illumina(subsampled)", hout, 31)
-
-os.remove(output_file+".sorted.txt")
-os.remove(output_file+".sorted.illumina.txt")
-os.remove(output_file+".anno.txt")
-os.remove(output_file+".anno.illumina.txt")
-os.remove(output_file+".filt1.txt")
-os.remove(output_file+".filt2.txt")
-# os.remove(output_file+".filt3.txt")
-if illumina_file2 != "None":
-    os.remove(output_file+".sorted.illumina2.txt")
-    os.remove(output_file+".anno.illumina2.txt")
+        cmd = ["sort", "-k", "18", "-r", "-n", illumina_file2]
+        with open(output_file+".sorted.illumina2.txt", 'w') as hout:
+            subprocess.check_call(cmd, stdout=hout)
+    
+    annotate_anno(output_file+".sorted.txt", output_file+".anno.txt", ccl_tabix, 0,1,2,3)
+    annotate_anno(output_file+".sorted.illumina.txt", output_file+".anno.illumina.txt", ccl_tabix, 0,1,3,4)
+    if illumina_file2 != "None":
+        annotate_anno(output_file+".sorted.illumina2.txt", output_file+".anno.illumina2.txt", ccl_tabix, 0,1,3,4)
+        
+    shutil.copy(output_file+".anno.txt", output_file+".filt1.txt")
+    filter_result(output_file+".anno.txt", output_file+".filt2.txt", 2)
+    filter_result(output_file+".anno.txt", output_file+".filt3.txt", 3)
+    
+    with open(output_file, 'w') as hout:
+        get_presigion_recall(output_file+".filt1.txt","Method1", hout, 38)
+        get_presigion_recall(output_file+".filt2.txt","Method2", hout, 38)
+        get_presigion_recall(output_file+".filt3.txt","Method3", hout, 38)
+        get_presigion_recall(output_file+".anno.illumina.txt","Illumina", hout, 31)
+        if illumina_file2 != "None":
+            get_presigion_recall(output_file+".anno.illumina2.txt","Illumina(subsampled)", hout, 31)
+    
+    os.remove(output_file+".sorted.txt")
+    os.remove(output_file+".sorted.illumina.txt")
+    os.remove(output_file+".anno.txt")
+    os.remove(output_file+".anno.illumina.txt")
+    os.remove(output_file+".filt1.txt")
+    os.remove(output_file+".filt2.txt")
+    os.remove(output_file+".filt3.txt")
+    if illumina_file2 != "None":
+        os.remove(output_file+".sorted.illumina2.txt")
+        os.remove(output_file+".anno.illumina2.txt")
