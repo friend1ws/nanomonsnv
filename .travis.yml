@@ -13,7 +13,7 @@ before_script:
   - pip install numpy==1.15.1
   - pip install scipy==1.1.0
   - pip install statistics==1.0.3.5
-  - pip install sython==0.29.17
+  - pip install Cython==0.29.17
 
   - export HTSLIB_LIBRARY_DIR="/usr/local/lib"
   - export HTSLIB_INCLUDE_DIR="/usr/local/include"
