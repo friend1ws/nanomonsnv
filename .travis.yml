@@ -10,17 +10,17 @@ before_script:
   - cd ../ && ./configure --without-curses && make && sudo make install && cd ../
                         
   - pip install requests
+  - pip install numpy==1.15.1
   - pip install scipy==1.1.0
   - pip install statistics==1.0.3.5
-  - pip install pysam==0.15.2
-  - pip install numpy==1.15.1
+  - pip install sython==0.29.17
 
   - export HTSLIB_LIBRARY_DIR="/usr/local/lib"
   - export HTSLIB_INCLUDE_DIR="/usr/local/include"
 
   - wget https://github.com/pysam-developers/pysam/archive/v0.15.2.tar.gz
   - tar zxvf v0.15.2.tar.gz
-  - cd pysam-0.15.2 && python setup.py build install && cd ..
+  - cd pysam-0.15.2 && python setup.py build install && cd ../
 
   - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:"/usr/local/lib"
 
