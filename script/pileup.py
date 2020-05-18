@@ -1,3 +1,4 @@
+from __future__ import print_function
 import subprocess
 import sys, re
 import pysam
@@ -89,18 +90,19 @@ def proc_pileup_line(chrom, pos, ref, alt, out_line, pileup_line, samfile, outpu
     for x in ovar2qname[alt.lower()]:
         h_haplotag_alt[h_haplotag_minus[x]] += 1   
         
+    # print(ovar2qname)
     # print(h_haplotag_plus)
     # print(h_haplotag_minus)
     # print(h_haplotag_ref)
     # print(h_haplotag_alt)
 
     print (out_line 
-    +"\t"+str(h_haplotag_ref["1"]) 
+    +"\t"+ str(h_haplotag_ref["1"]) 
     +"\t"+ str(h_haplotag_ref["2"]) 
     +"\t"+ str(h_haplotag_ref["---"]) 
     +"\t"+ str(h_haplotag_alt["1"]) 
     +"\t"+ str(h_haplotag_alt["2"]) 
-    +"\t"+ str(h_haplotag_alt["---"]), file=output_file_handle)
+    +"\t"+ str(h_haplotag_alt["---"]), file = output_file_handle)
     
     
 def pileup_main(input_file, tumor_bam, output_file):
@@ -143,5 +145,6 @@ if __name__ == "__main__":
     tumor_bam = sys.argv[1]
     input_file = sys.argv[2]
     output_file = sys.argv[3]
+    
     pileup_main(input_file, tumor_bam, output_file)
 
