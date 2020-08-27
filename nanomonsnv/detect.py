@@ -10,7 +10,7 @@ from .utils import check_pileup_record
 
 
 def proc_pileup_line(pileup_line, output_file_handle, min_variant_num_tumor = 5, min_depth_tumor = 8, min_variant_ratio_tumor = 0.1,
-                     max_variant_num_ctrl = 2, min_depth_ctrl = 10, max_variant_ratio_ctrl = 0.05, min_minus_log10_fisher_pvalue = 1.30103):
+                     max_variant_num_ctrl = 2, min_depth_ctrl = 10, max_variant_ratio_ctrl = 0.1, min_minus_log10_fisher_pvalue = 1.30103):
 
 
     F = pileup_line.rstrip('\n').split('\t')
