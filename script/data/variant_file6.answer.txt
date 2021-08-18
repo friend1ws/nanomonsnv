@@ -1,2 +1,0 @@
-chr1	3237702	G	T	False
-chr1	3237703	G	T	False

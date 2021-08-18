@@ -1,2 +1,0 @@
-chr1	3237702	G	A	True
-chr1	3237703	G	A	True
